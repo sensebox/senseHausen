@@ -6,36 +6,32 @@ const int colorR = 255;
 const int colorG = 0;
 const int colorB = 0;
 
-//Infrarot
+//Infrarot(parkinglot)
 int infrarotPIN = A0;
 int infrarotDistance = 0;
 int parkLEDred = 6;
 int parkLEDgreen = 7;
 
 //Sensor general
-int spur1a= 3;
-int spur1e= 12;
-int distancemax = 12;
+
 unsigned int time=0;
-unsigned int distance1=0;
-unsigned int distance2=0;
-unsigned int zaehler1=0;
-unsigned int zaehler2=0;
+unsigned int distancemax = 10;
+unsigned int distancemin = 3;
+unsigned int distance = distancemax;
+unsigned int counter_left = 0;
+unsigned int counter_right = 0;
 
-//Sensor1
-int trig = 12;
-int echo = 11;
-int schalter11= 1;
-int schalter12= 1;
+//Sensor left
+int trig_left = 12;
+int echo_left = 11;
 
-//Sensor2
-int trig1 = 9;
-int echo1 = 10;
-int schalter21= 1;
-int schalter22= 1;
+//Sensor rigth
+int trig_right = 9;
+int echo_right = 10;
+
 
 void setup () {
-  //Serial.begin(9600);
+  Serial.begin(9600);
 
   // set up the LCD's number of columns and rows:
   lcd.begin(20, 2);
@@ -43,12 +39,13 @@ void setup () {
     
   // Print a message to the LCD.
   lcd.print("Anzahl Fahrzeuge");
+  writeLCD();
   
-  pinMode(trig, OUTPUT);
-  pinMode(echo, INPUT);
+  pinMode(trig_right, OUTPUT);
+  pinMode(echo_right, INPUT);
 
-  pinMode(trig1, OUTPUT);
-  pinMode(echo1, INPUT);
+  pinMode(trig_left, OUTPUT);
+  pinMode(echo_left, INPUT);
 
   pinMode(parkLEDred, OUTPUT);
   pinMode(parkLEDgreen, OUTPUT);
@@ -57,34 +54,105 @@ void setup () {
 
 void loop()
 {
-  lcd.setCursor(8, 1);
-  digitalWrite(trig, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trig, LOW);
-  time=pulseIn(echo, HIGH);
-  distance1=time/58;
-  delay(100);
-  if (distance1 < spur1e and distance1 > spur1a and schalter11 == 1) {
-    zaehler1++;
+  //Serial.println(checkForCarRight());
+  //Serial.println(checkForCarLeft());
+  
+  if(checkForCarRight()){
+    delay(500);
+    writeLCD();
   }
-  if (distance1 < distancemax) {
-    schalter11 = 0;
-  } else {
-    schalter11 = 1;
+  if(checkForCarLeft()){
+    delay(500);
+    writeLCD();
   }
-  lcd.print(zaehler1);
-  digitalWrite(trig1, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trig1, LOW);
-  time=pulseIn(echo1, HIGH);
-  distance2=time/58;
-  delay(100);
-  if (distance2 < spur1e and distance2 > spur1a and schalter21 == 1) zaehler2++;
-  if (distance2<distancemax) schalter21 = 0;
-  else schalter21 = 1;
+   checkCarLot();  
+}
 
+void writeLCD(){
+  for(int i = 0; i < 15;i++){
+    lcd.setCursor(i, 1);
+    lcd.print(" ");
+  }
+  
+  //atention Left and Right are mixed up so they are "corrected" for print
+  lcd.setCursor(11, 1);
+  lcd.print("R");
+  lcd.setCursor(12, 1);
+  lcd.print(counter_left);
+
+  lcd.setCursor(0, 1);
+  lcd.print("L");
+  lcd.setCursor(1, 1);
+  lcd.print(counter_right);
+}
+boolean checkForCarRight(){
+  
+  digitalWrite(trig_right, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig_right, LOW);
+  time=pulseIn(echo_right, HIGH);
+  distance=time/58;
+  delay(100);
+
+   //Serial.print("right ");
+   //Serial.println(distance);
+  //wait for car
+  if((distance > distancemin)and(distance < distancemax)){
+    //wait for car to pass
+    delay(500);
+    while((distance > distancemin)and(distance < distancemax)){
+
+      //Serial.print("right ");
+      //Serial.println(distance);
+    
+      digitalWrite(trig_right, HIGH);
+      delayMicroseconds(10);
+      digitalWrite(trig_right, LOW);
+      time=pulseIn(echo_right, HIGH);
+      distance=time/58;
+      delay(100);
+    }
+    counter_right++;
+    return true;
+  }
+    return false;
+ }
+
+boolean checkForCarLeft(){
+ digitalWrite(trig_left, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig_left, LOW);
+  time=pulseIn(echo_left, HIGH);
+  distance=time/58;
+  delay(100);
+  ////Serial.print("left: ");
+  ////Serial.println(distance);
+  //checkfor car
+  if((distance > distancemin)and(distance < distancemax)){
+    //wait for car to pass
+    delay(500);
+    while((distance > distancemin)and(distance < distancemax)){
+    
+      ////Serial.print("left: ");
+      ////Serial.println(distance);
+    
+      digitalWrite(trig_left, HIGH);
+      delayMicroseconds(10);
+      digitalWrite(trig_left, LOW);
+      time=pulseIn(echo_left, HIGH);
+      distance=time/58;
+      delay(100);
+    }
+    counter_left++;
+    return true;
+  }
+    return false;
+ }
+
+void checkCarLot(){
   infrarotDistance = analogRead(infrarotPIN);
-  if (infrarotDistance < 440 or infrarotDistance > 460) {
+  Serial.println(infrarotDistance);
+  if ((infrarotDistance < 440) or (infrarotDistance > 680)) {
     digitalWrite(parkLEDred, HIGH);
     digitalWrite(parkLEDgreen, LOW);
   } else {
@@ -92,3 +160,4 @@ void loop()
     digitalWrite(parkLEDgreen, HIGH);
   }
 }
+
